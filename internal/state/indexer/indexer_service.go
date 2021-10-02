@@ -2,7 +2,7 @@ package indexer
 
 import (
 	"context"
-
+	"fmt"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )
@@ -129,6 +129,9 @@ func KVSinkEnabled(sinks []EventSink) bool {
 func IndexingEnabled(sinks []EventSink) bool {
 	for _, sink := range sinks {
 		if sink.Type() == KV || sink.Type() == PSQL {
+			if(sink.Type()==PSQL) {
+				fmt.Println("Using Postgres Indexer")
+			}
 			return true
 		}
 	}

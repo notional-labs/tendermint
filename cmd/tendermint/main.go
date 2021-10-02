@@ -33,7 +33,6 @@ func main() {
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
 	)
-
 	// NOTE:
 	// Users wishing to:
 	//	* Use an external signer for their validators

@@ -2,6 +2,7 @@ package sink
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/tendermint/tendermint/config"
@@ -16,6 +17,7 @@ import (
 //
 //nolint:lll
 func EventSinksFromConfig(cfg *config.Config, dbProvider config.DBProvider, chainID string) ([]indexer.EventSink, error) {
+	fmt.Println("Creating event sink");
 	if len(cfg.TxIndex.Indexer) == 0 {
 		return []indexer.EventSink{null.NewEventSink()}, nil
 	}
@@ -30,6 +32,7 @@ func EventSinksFromConfig(cfg *config.Config, dbProvider config.DBProvider, chai
 		sinks[sl] = struct{}{}
 	}
 	eventSinks := []indexer.EventSink{}
+	fmt.Println(sinks);
 	for k := range sinks {
 		switch indexer.EventSinkType(k) {
 		case indexer.NULL:
