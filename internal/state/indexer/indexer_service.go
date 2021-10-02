@@ -24,7 +24,7 @@ type Service struct {
 
 // NewIndexerService returns a new service instance.
 func NewIndexerService(es []EventSink, eventBus *types.EventBus) *Service {
-
+	fmt.Println("Creating indexer service");
 	is := &Service{eventSinks: es, eventBus: eventBus}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
 	return is

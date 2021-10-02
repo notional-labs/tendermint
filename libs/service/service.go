@@ -131,6 +131,7 @@ func (bs *BaseService) SetLogger(l log.Logger) {
 // returned if the service is already running or stopped. Not to start the
 // stopped service, you need to call Reset.
 func (bs *BaseService) Start() error {
+	fmt.Println("Starting service:" + bs.name);
 	if atomic.CompareAndSwapUint32(&bs.started, 0, 1) {
 		if atomic.LoadUint32(&bs.stopped) == 1 {
 			bs.Logger.Error("not starting service; already stopped", "service", bs.name, "impl", bs.impl.String())
