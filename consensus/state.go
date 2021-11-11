@@ -1855,11 +1855,11 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 	if err != nil {
 		return added, err
 	}
-	if cs.ProposalBlockParts.ByteSize() > cs.state.ConsensusParams.Block.MaxBytes {
-		return added, fmt.Errorf("total size of proposal block parts exceeds maximum block bytes (%d > %d)",
-			cs.ProposalBlockParts.ByteSize(), cs.state.ConsensusParams.Block.MaxBytes,
-		)
-	}
+	// `	if cs.ProposalBlockParts.ByteSize() > cs.state.ConsensusParams.Block.MaxBytes {
+	// 		return added, fmt.Errorf("total size of proposal block parts exceeds maximum block bytes (%d > %d)",
+	// 			cs.ProposalBlockParts.ByteSize(), cs.state.ConsensusParams.Block.MaxBytes,
+	// 		)
+	// 	}`
 	if added && cs.ProposalBlockParts.IsComplete() {
 		bz, err := ioutil.ReadAll(cs.ProposalBlockParts.GetReader())
 		if err != nil {

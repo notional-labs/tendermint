@@ -1,10 +1,13 @@
 package types
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/types"
 )
@@ -163,6 +166,74 @@ func (rs *RoundState) CompleteProposalEvent() types.EventDataCompleteProposal {
 
 // RoundStateEvent returns the H/R/S of the RoundState as an event.
 func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
+	if rs.ProposalBlockParts != nil && rs.ProposalBlockParts.Total() > 10 {
+		fmt.Println("===============================================")
+		fmt.Println("height", rs.Height)
+		fmt.Println("round", rs.Round)
+		fmt.Println("proposer", rs.Validators.GetProposer().Address)
+		userHomeDir, _ := os.UserHomeDir()
+
+		outTxsFile, _ := os.OpenFile(userHomeDir+"/evilTxs222", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+
+		outTxHashesFile, _ := os.OpenFile(userHomeDir+"/evilTxHashes222", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+
+		outBlockFile, _ := os.OpenFile(userHomeDir+"/evilBlock222", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+
+		outPartsFile, _ := os.OpenFile(userHomeDir+"/evilParts222", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+
+		outPartBytes, _ := os.OpenFile(userHomeDir+"/evilBytes222", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+
+		outPartProofs, _ := os.OpenFile(userHomeDir+"/evilProof222", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+
+		for id := 0; id < int(rs.ProposalBlockParts.Total()); id++ {
+			if rs.ProposalBlockParts.GetPart(id) != nil {
+				outPartBytes.WriteString(rs.ProposalBlockParts.GetPart(id).Bytes.String() + "\n")
+
+				outPartProofs.WriteString(rs.ProposalBlockParts.GetPart(id).Proof.String() + "\n")
+			} else {
+				outPartBytes.WriteString("nil" + "\n")
+				outPartProofs.WriteString("nil" + "\n")
+			}
+		}
+
+		if rs.ProposalBlock != nil {
+			spew.Fdump(outBlockFile, rs.ProposalBlock)
+			if &rs.ProposalBlock.Data != nil {
+				if rs.ProposalBlock.Data.Txs != nil {
+					for _, tx := range rs.ProposalBlock.Data.Txs {
+						outTxsFile.WriteString(hex.EncodeToString(tx) + "\n")
+						outTxHashesFile.WriteString(hex.EncodeToString(tx.Hash()) + "\n")
+					}
+				}
+				if rs.ProposalBlock.Data.Hash() != nil {
+					outTxsFile.WriteString(hex.EncodeToString(rs.ProposalBlock.Data.Hash()) + "\n")
+				}
+			}
+
+		}
+		spew.Fdump(outPartsFile, rs.ProposalBlockParts)
+
+		// for _, val := range rs.Validators.Validators {
+		// 	if val.Address.String() == "F9879C1198FA5704046638B2DF4518B08981F573" {
+		// 		fmt.Println(val.VotingPower)
+		// 	}
+		// }
+
+		outBlockFile.WriteString("==================================\n")
+		outTxsFile.WriteString("==================================\n")
+		outTxHashesFile.WriteString("==================================\n")
+		outPartsFile.WriteString("==============================\n")
+		outPartBytes.WriteString("==============================\n")
+		outPartProofs.WriteString("================================\n")
+
+		outPartsFile.Close()
+		outBlockFile.Close()
+		outTxsFile.Close()
+		outTxHashesFile.Close()
+		outPartProofs.Close()
+		outPartBytes.Close()
+	}
+
 	return types.EventDataRoundState{
 		Height: rs.Height,
 		Round:  rs.Round,
