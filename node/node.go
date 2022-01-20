@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
 	"strings"
 	"time"
 
@@ -41,6 +40,7 @@ import (
 	"github.com/tendermint/tendermint/state/indexer"
 	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
 	blockidxnull "github.com/tendermint/tendermint/state/indexer/block/null"
+	"github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
@@ -49,6 +49,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
+
+	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
+
+	_ "github.com/lib/pq" // provide the psql db driver
 )
 
 //------------------------------------------------------------------------------
@@ -152,6 +156,21 @@ func CustomReactors(reactors map[string]p2p.Reactor) Option {
 				n.sw.RemoveReactor(name, existingReactor)
 			}
 			n.sw.AddReactor(name, reactor)
+			// register the new channels to the nodeInfo
+			// NOTE: This is a bit messy now with the type casting but is
+			// cleaned up in the following version when NodeInfo is changed from
+			// and interface to a concrete type
+			if ni, ok := n.nodeInfo.(p2p.DefaultNodeInfo); ok {
+				for _, chDesc := range reactor.GetChannels() {
+					if !ni.HasChannel(chDesc.ID) {
+						ni.Channels = append(ni.Channels, chDesc.ID)
+						n.transport.AddChannel(chDesc.ID)
+					}
+				}
+				n.nodeInfo = ni
+			} else {
+				n.Logger.Error("Node info is not of type DefaultNodeInfo. Custom reactor channels can not be added.")
+			}
 		}
 	}
 }
@@ -244,6 +263,7 @@ func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 
 func createAndStartIndexerService(
 	config *cfg.Config,
+	chainID string,
 	dbProvider DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
@@ -263,6 +283,18 @@ func createAndStartIndexerService(
 
 		txIndexer = kv.NewTxIndex(store)
 		blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
+
+	case "psql":
+		if config.TxIndex.PsqlConn == "" {
+			return nil, nil, nil, errors.New(`no psql-conn is set for the "psql" indexer`)
+		}
+		es, err := psql.NewEventSink(config.TxIndex.PsqlConn, chainID)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("creating psql indexer: %w", err)
+		}
+		txIndexer = es.TxIndexer()
+		blockIndexer = es.BlockIndexer()
+
 	default:
 		txIndexer = &null.TxIndex{}
 		blockIndexer = &blockidxnull.BlockerIndexer{}
@@ -299,7 +331,7 @@ func doHandshake(
 func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
-		"software", version.TMCoreSemVer,
+		"tendermint_version", version.TMCoreSemVer,
 		"block", version.BlockProtocol,
 		"p2p", version.P2PProtocol,
 	)
@@ -666,7 +698,8 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config, dbProvider, eventBus, logger)
+	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config,
+		genDoc.ChainID, dbProvider, eventBus, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -759,8 +792,12 @@ func NewNode(config *cfg.Config,
 	// FIXME The way we do phased startups (e.g. replay -> fast sync -> consensus) is very messy,
 	// we should clean this whole thing up. See:
 	// https://github.com/tendermint/tendermint/issues/4644
-	stateSyncReactor := statesync.NewReactor(proxyApp.Snapshot(), proxyApp.Query(),
-		config.StateSync.TempDir)
+	stateSyncReactor := statesync.NewReactor(
+		*config.StateSync,
+		proxyApp.Snapshot(),
+		proxyApp.Query(),
+		config.StateSync.TempDir,
+	)
 	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
 
 	nodeInfo, err := makeNodeInfo(config, nodeKey, txIndexer, genDoc, state)
@@ -978,6 +1015,16 @@ func (n *Node) OnStop() {
 			n.Logger.Error("Prometheus HTTP server Shutdown", "err", err)
 		}
 	}
+	if n.blockStore != nil {
+		if err := n.blockStore.Close(); err != nil {
+			n.Logger.Error("problem closing blockstore", "err", err)
+		}
+	}
+	if n.stateStore != nil {
+		if err := n.stateStore.Close(); err != nil {
+			n.Logger.Error("problem closing statestore", "err", err)
+		}
+	}
 }
 
 // ConfigureRPC makes sure RPC has all the objects it needs to operate.
@@ -1009,6 +1056,10 @@ func (n *Node) ConfigureRPC() error {
 
 		Config: *n.config.RPC,
 	})
+	if err := rpccore.InitGenesisChunks(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1049,6 +1100,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 				}
 			}),
 			rpcserver.ReadLimit(config.MaxBodyBytes),
+			rpcserver.WriteChanCapacity(n.config.RPC.WebSocketWriteBufferSize),
 		)
 		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
@@ -1240,7 +1292,7 @@ func makeNodeInfo(
 	txIndexer txindex.TxIndexer,
 	genDoc *types.GenesisDoc,
 	state sm.State,
-) (p2p.NodeInfo, error) {
+) (p2p.DefaultNodeInfo, error) {
 	txIndexerStatus := "on"
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
@@ -1255,7 +1307,7 @@ func makeNodeInfo(
 	case "v2":
 		bcChannel = bcv2.BlockchainChannel
 	default:
-		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return p2p.DefaultNodeInfo{}, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
 	}
 
 	nodeInfo := p2p.DefaultNodeInfo{

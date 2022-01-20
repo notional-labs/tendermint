@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -16,9 +17,6 @@ import (
 // Tests that any initial state given in genesis has made it into the app.
 func TestApp_InitialState(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Stateless() {
-			return
-		}
 		if len(node.Testnet.InitialState) == 0 {
 			return
 		}
@@ -38,10 +36,6 @@ func TestApp_InitialState(t *testing.T) {
 // block and the node sync status.
 func TestApp_Hash(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
-			return
-		}
-
 		client, err := node.Client()
 		require.NoError(t, err)
 		info, err := client.ABCIInfo(ctx)
@@ -63,10 +57,6 @@ func TestApp_Hash(t *testing.T) {
 // Tests that we can set a value and retrieve it.
 func TestApp_Tx(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
-		if node.Mode == e2e.ModeSeed {
-			return
-		}
-
 		client, err := node.Client()
 		require.NoError(t, err)
 
@@ -81,17 +71,17 @@ func TestApp_Tx(t *testing.T) {
 		value := fmt.Sprintf("%x", bz)
 		tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
 
-		resp, err := client.BroadcastTxCommit(ctx, tx)
+		_, err = client.BroadcastTxSync(ctx, tx)
 		require.NoError(t, err)
-
-		// wait for the tx to be persisted in the tx indexer
-		time.Sleep(500 * time.Millisecond)
 
 		hash := tx.Hash()
-		txResp, err := client.Tx(ctx, hash, false)
-		require.NoError(t, err)
-		assert.Equal(t, txResp.Tx, tx)
-		assert.Equal(t, txResp.Height, resp.Height)
+		waitTime := 30 * time.Second
+		require.Eventuallyf(t, func() bool {
+			txResp, err := client.Tx(ctx, hash, false)
+			return err == nil && bytes.Equal(txResp.Tx, tx)
+		}, waitTime, time.Second,
+			"submitted tx wasn't committed after %v", waitTime,
+		)
 
 		// NOTE: we don't test abci query of the light client
 		if node.Mode == e2e.ModeLight {
