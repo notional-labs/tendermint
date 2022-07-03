@@ -1,4 +1,4 @@
-module github.com/tendermint/tendermint
+module github.com/Team-Kujira/tendermint
 
 go 1.16
 
