@@ -58,11 +58,12 @@ CREATE TABLE events (
 -- The attributes table records event attributes.
 CREATE TABLE attributes (
    event_id      BIGINT NOT NULL REFERENCES events(rowid),
+   idx           INT NOT NULL,
    key           VARCHAR NOT NULL, -- bare key
    composite_key VARCHAR NOT NULL, -- composed type.key
    value         VARCHAR NULL,
 
-   UNIQUE (event_id, key)
+   UNIQUE (event_id, idx, key)
 );
 
 -- A joined view of events and their attributes. Events that do not have any

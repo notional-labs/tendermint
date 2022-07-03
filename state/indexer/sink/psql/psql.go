@@ -92,7 +92,7 @@ func insertEvents(dbtx *sql.Tx, blockID, txID uint32, evts []abci.Event) error {
 
 	// Add each event to the events table, and retrieve its row ID to use when
 	// adding any attributes the event provides.
-	for _, evt := range evts {
+	for idx, evt := range evts {
 		// Skip events with an empty type.
 		if evt.Type == "" {
 			continue
@@ -113,9 +113,9 @@ INSERT INTO `+tableEvents+` (block_id, tx_id, type) VALUES ($1, $2, $3)
 			}
 			compositeKey := evt.Type + "." + string(attr.Key)
 			if _, err := dbtx.Exec(`
-INSERT INTO `+tableAttributes+` (event_id, key, composite_key, value)
-  VALUES ($1, $2, $3, $4);
-`, eid, attr.Key, compositeKey, attr.Value); err != nil {
+INSERT INTO `+tableAttributes+` (event_id, idx, key, composite_key, value)
+  VALUES ($1, $2, $3, $4, $5);
+`, eid, idx, attr.Key, compositeKey, attr.Value); err != nil {
 				return err
 			}
 		}
