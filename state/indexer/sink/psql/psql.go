@@ -98,6 +98,14 @@ func insertEvents(dbtx *sql.Tx, blockID, txID uint32, evts []abci.Event) error {
 			continue
 		}
 
+		if evt.Type == "rewards" {
+			continue
+		}
+
+		if evt.Type == "commission" {
+			continue
+		}
+
 		eid, err := queryWithID(dbtx, `
 INSERT INTO `+tableEvents+` (block_id, tx_id, type) VALUES ($1, $2, $3)
   RETURNING rowid;
