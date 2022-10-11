@@ -1,6 +1,22 @@
 # Upgrading Tendermint Core
 
-This guide provides instructions for upgrading to specific versions of Tendermint Core.
+This guide provides instructions for upgrading to specific versions of
+Tendermint Core.
+
+## v0.34.20
+
+### Feature: Priority Mempool
+
+This release backports an implementation of the Priority Mempool from the v0.35
+branch. This implementation of the mempool permits the application to set a
+priority on each transaction during CheckTx, and during block selection the
+highest-priority transactions are chosen (subject to the constraints on size
+and gas cost).
+
+Operators can enable the priority mempool by setting `mempool.version` to
+`"v1"` in the `config.toml`. For more technical details about the priority
+mempool, see [ADR 067: Mempool
+Refactor](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-067-mempool-refactor.md).
 
 ## v0.34.0
 
@@ -8,7 +24,7 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 This release is not compatible with previous blockchains due to changes to
 the encoding format (see "Protocol Buffers," below) and the block header (see "Blockchain Protocol").
 
-Note also that Tendermint 0.34 also requires Go 1.15 or higher. 
+Note also that Tendermint 0.34 also requires Go 1.16 or higher.
 
 ### ABCI Changes
 
@@ -18,7 +34,7 @@ Note also that Tendermint 0.34 also requires Go 1.15 or higher.
   were added to support the new State Sync feature.
   Previously, syncing a new node to a preexisting network could take days; but with State Sync,
   new nodes are able to join a network in a matter of seconds.
-  Read [the spec](https://docs.tendermint.com/master/spec/abci/apps.html#state-sync)
+  Read [the spec](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/abci/apps.md#state-sync)
   if you want to learn more about State Sync, or if you'd like your application to use it.
   (If you don't want to support State Sync in your application, you can just implement these new
   ABCI methods as no-ops, leaving them empty.)
@@ -34,7 +50,7 @@ Note also that Tendermint 0.34 also requires Go 1.15 or higher.
   Applications should be able to handle these evidence types
   (i.e., through slashing or other accountability measures).
 
-* The [`PublicKey` type](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/crypto/keys.proto#L13-L15)
+* The [`PublicKey` type](https://github.com/tendermint/tendermint/blob/v0.34.x/proto/tendermint/crypto/keys.proto#L13-L15)
   (used in ABCI as part of `ValidatorUpdate`) now uses a `oneof` protobuf type.
   Note that since Tendermint only supports ed25519 validator keys, there's only one
   option in the `oneof`.  For more, see "Protocol Buffers," below.
@@ -49,12 +65,9 @@ directory. For more, see "Protobuf," below.
 
 ### Blockchain Protocol
 
-* `Header#LastResultsHash` previously was the root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data)` responses.
-  As of 0.34,`Header#LastResultsHash` is now the root hash of a Merkle tree built from:
-    * `BeginBlock#Events`
-    * Root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data,
-      GasWanted, GasUsed, Events)` responses
-    * `BeginBlock#Events`
+* `Header#LastResultsHash`, which is the root hash of a Merkle tree built from
+  `ResponseDeliverTx(Code, Data)` as of v0.34 also includes `GasWanted` and `GasUsed`
+  fields.
 
 * Merkle hashes of empty trees previously returned nothing, but now return the hash of an empty input,
   to conform with [RFC-6962](https://tools.ietf.org/html/rfc6962).
@@ -112,7 +125,7 @@ Tendermint 0.34 includes new and updated consensus parameters.
 
 #### Evidence Parameters
 
-* `MaxBytes`, which caps the total amount of evidence. The default is 1048576 (1 MB). 
+* `MaxBytes`, which caps the total amount of evidence. The default is 1048576 (1 MB).
 
 ### Crypto
 
@@ -144,7 +157,7 @@ The `bech32` package has moved to the Cosmos SDK:
 ### CLI
 
 The `tendermint lite` command has been renamed to `tendermint light` and has a slightly different API.
-See [the docs](https://docs.tendermint.com/master/tendermint-core/light-client-protocol.html#http-proxy) for details.
+See [the docs](https://docs.tendermint.com/v0.33/tendermint-core/light-client-protocol.html#http-proxy) for details.
 
 ### Light Client
 
@@ -158,6 +171,7 @@ Other user-relevant changes include:
 * The `Verifier` was broken up into two pieces:
     * Core verification logic (pure `VerifyX` functions)
     * `Client` object, which represents the complete light client
+* The new light client stores headers and validator sets as `LightBlock`s
 * The RPC client can be found in the `/rpc` directory.
 * The HTTP(S) proxy is located in the `/proxy` directory.
 
@@ -188,7 +202,7 @@ blockchains, we recommend that you check the chain ID.
 
 ### Version
 
-Version is now set through Go linker flags `ld_flags`. Applications that are using tendermint as a library should set this at compile time. 
+Version is now set through Go linker flags `ld_flags`. Applications that are using tendermint as a library should set this at compile time.
 
 Example:
 
@@ -196,7 +210,7 @@ Example:
 go install -mod=readonly -ldflags "-X github.com/tendermint/tendermint/version.TMCoreSemVer=$(go list -m github.com/tendermint/tendermint | sed  's/ /\@/g') -s -w " -trimpath ./cmd
 ```
 
-Additionally, the exported constant `version.Version` is now `version.TMCoreSemVer`. 
+Additionally, the exported constant `version.Version` is now `version.TMCoreSemVer`.
 
 ## v0.33.4
 
@@ -299,7 +313,7 @@ Evidence Params has been changed to include duration.
 ### RPC Changes
 
 * `/validators` is now paginated (default: 30 vals per page)
-* `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/master/rpc/#/Info/block_results)
+* `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/v0.33/rpc/#/Info/block_results)
 * Event suffix has been removed from the ID in event responses
 * IDs are now integers not `json-client-XYZ`
 
@@ -418,11 +432,11 @@ the compilation tag:
 
 Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
 use `make build_c` / `make install_c` (full instructions can be found at
-<https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support>)
+<https://docs.tendermint.com/v0.33/introduction/install.html#compile-with-cleveldb-support>)
 
 ## v0.31.0
 
-This release contains a breaking change to the behaviour of the pubsub system.
+This release contains a breaking change to the behavior of the pubsub system.
 It also contains some minor breaking changes in the Go API and ABCI.
 There are no changes to the block or p2p protocols, so v0.31.0 should work fine
 with blockchains created from the v0.30 series.
@@ -440,7 +454,7 @@ In this case, the WS client will receive an error with description:
   "error": {
     "code": -32000,
     "msg": "Server error",
-    "data": "subscription was cancelled (reason: client is not pulling messages fast enough)" // or "subscription was cancelled (reason: Tendermint exited)"
+    "data": "subscription was canceled (reason: client is not pulling messages fast enough)" // or "subscription was canceled (reason: Tendermint exited)"
   }
 }
 
@@ -493,14 +507,14 @@ due to changes in how various data structures are hashed.
 Any implementations of Tendermint blockchain verification, including lite clients,
 will need to be updated. For specific details:
 
-* [Merkle tree](https://github.com/tendermint/spec/blob/master/spec/blockchain/encoding.md#merkle-trees)
-* [ConsensusParams](https://github.com/tendermint/spec/blob/master/spec/blockchain/state.md#consensusparams)
+* [Merkle tree](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/blockchain/encoding.md#merkle-trees)
+* [ConsensusParams](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/blockchain/state.md#consensusparams)
 
 There was also a small change to field ordering in the vote struct. Any
 implementations of an out-of-process validator (like a Key-Management Server)
 will need to be updated. For specific details:
 
-* [Vote](https://github.com/tendermint/spec/blob/master/spec/consensus/signing.md#votes)
+* [Vote](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/consensus/signing.md#votes)
 
 Finally, the proposer selection algorithm continues to evolve. See the
 [work-in-progress
@@ -621,7 +635,7 @@ to `timeout_propose = "3s"`.
 
 ### RPC Changes
 
-The default behaviour of `/abci_query` has been changed to not return a proof,
+The default behavior of `/abci_query` has been changed to not return a proof,
 and the name of the parameter that controls this has been changed from `trusted`
 to `prove`. To get proofs with your queries, ensure you set `prove=true`.
 
