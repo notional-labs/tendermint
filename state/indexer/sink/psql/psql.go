@@ -72,7 +72,7 @@ func runInTransaction(db *sql.DB, query func(*sql.Tx) error) error {
 // succeeds, the ID from the result is returned.
 func queryWithID(tx *sql.Tx, query string, args ...interface{}) (uint32, error) {
 	var id uint32
-	if err := tx.QueryRow(query, args...).Scan(&id); err != nil {
+	if _, err := tx.Query(query, args...).Scan(&id); err != nil {
 		return 0, err
 	}
 	return id, nil
@@ -89,6 +89,8 @@ func insertEvents(dbtx *sql.Tx, blockID, txID uint32, evts []abci.Event) error {
 	if txID > 0 {
 		txIDArg = txID
 	}
+
+	attrs := ""
 
 	// Add each event to the events table, and retrieve its row ID to use when
 	// adding any attributes the event provides.
@@ -121,9 +123,9 @@ INSERT INTO `+tableEvents+` (block_id, tx_id, type) VALUES ($1, $2, $3)
 			}
 			compositeKey := evt.Type + "." + string(attr.Key)
 			if _, err := dbtx.Exec(`
-INSERT INTO `+tableAttributes+` (event_id, idx, key, composite_key, value)
-  VALUES ($1, $2, $3, $4, $5);
-`, eid, idx, attr.Key, compositeKey, attr.Value); err != nil {
+INSERT INTO `+tableAttributes+` (tx_id, event_id, idx, key, composite_key, value)
+  VALUES ($1, $2, $3, $4, $5, $6);
+`, txIDArg, eid, idx, attr.Key, compositeKey, attr.Value); err != nil {
 				return err
 			}
 		}
