@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"testing"
 
-	kitlog "github.com/go-kit/kit/log"
+	kitlog "github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -83,7 +83,7 @@ func benchmarkRunnerKitlog(b *testing.B, logger kitlog.Logger, f func(kitlog.Log
 	}
 }
 
-//nolint: errcheck // ignore errors
+// nolint: errcheck // ignore errors
 var (
 	baseMessage = func(logger kitlog.Logger) { logger.Log("foo_key", "foo_value") }
 	withMessage = func(logger kitlog.Logger) { kitlog.With(logger, "a", "b").Log("d", "f") }

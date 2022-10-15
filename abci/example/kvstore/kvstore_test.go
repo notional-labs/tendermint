@@ -162,7 +162,7 @@ func TestValUpdates(t *testing.T) {
 
 	makeApplyBlock(t, kvstore, 2, diff, tx1, tx2, tx3)
 
-	vals1 = append(vals[:nInit-2], vals[nInit+1]) // nolint: gocritic
+	vals1 = append(vals[:nInit-2], vals[nInit+1]) //nolint: gocritic
 	vals2 = kvstore.Validators()
 	valsEqual(t, vals1, vals2)
 
@@ -293,7 +293,7 @@ func TestClientServer(t *testing.T) {
 
 	// set up grpc app
 	kvstore = NewApplication()
-	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
+	gclient, gserver, err := makeGRPCClientServer(kvstore, "/tmp/kvstore-grpc")
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
