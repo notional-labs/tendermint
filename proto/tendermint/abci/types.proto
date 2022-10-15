@@ -211,13 +211,6 @@ message ResponseCheckTx {
   repeated Event events     = 7
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string codespace = 8;
-  bool is_oracle_tx = 9 [(gogoproto.jsontag) = "is_oracle_tx,omitempty"]; // mempool logic
-  string sender    = 10;
-  int64  priority  = 11;
-
-  // mempool_error is set by Tendermint.
-  // ABCI applictions creating a ResponseCheckTX should not set mempool_error.
-  string mempool_error = 12;
 }
 
 message ResponseDeliverTx {
