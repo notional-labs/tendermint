@@ -1,4 +1,3 @@
-//nolint: gosec
 package e2e
 
 import (
@@ -22,13 +21,13 @@ import (
 const (
 	randomSeed     int64  = 2308084734268
 	proxyPortFirst uint32 = 5701
-	networkIPv4           = "10.186.73.0/24"
-	networkIPv6           = "fd80:b10c::/48"
 )
 
-type Mode string
-type Protocol string
-type Perturbation string
+type (
+	Mode         string
+	Protocol     string
+	Perturbation string
+)
 
 const (
 	ModeValidator Mode = "validator"
@@ -75,6 +74,7 @@ type Node struct {
 	StartAt          int64
 	FastSync         string
 	StateSync        bool
+	Mempool          string
 	Database         string
 	ABCIProtocol     Protocol
 	PrivvalProtocol  Protocol
@@ -92,32 +92,20 @@ type Node struct {
 // The testnet generation must be deterministic, since it is generated
 // separately by the runner and the test cases. For this reason, testnets use a
 // random seed to generate e.g. keys.
-func LoadTestnet(file string) (*Testnet, error) {
-	manifest, err := LoadManifest(file)
-	if err != nil {
-		return nil, err
-	}
-	dir := strings.TrimSuffix(file, filepath.Ext(file))
-
-	// Set up resource generators. These must be deterministic.
-	netAddress := networkIPv4
-	if manifest.IPv6 {
-		netAddress = networkIPv6
-	}
-	_, ipNet, err := net.ParseCIDR(netAddress)
-	if err != nil {
-		return nil, fmt.Errorf("invalid IP network address %q: %w", netAddress, err)
-	}
-
-	ipGen := newIPGenerator(ipNet)
+func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Testnet, error) {
+	dir := strings.TrimSuffix(fname, filepath.Ext(fname))
 	keyGen := newKeyGenerator(randomSeed)
 	proxyPortGen := newPortGenerator(proxyPortFirst)
+	_, ipNet, err := net.ParseCIDR(ifd.Network)
+	if err != nil {
+		return nil, fmt.Errorf("invalid IP network address %q: %w", ifd.Network, err)
+	}
 
 	testnet := &Testnet{
 		Name:             filepath.Base(dir),
-		File:             file,
+		File:             fname,
 		Dir:              dir,
-		IP:               ipGen.Network(),
+		IP:               ipNet,
 		InitialHeight:    1,
 		InitialState:     manifest.InitialState,
 		Validators:       map[*Node]int64{},
@@ -144,12 +132,16 @@ func LoadTestnet(file string) (*Testnet, error) {
 
 	for _, name := range nodeNames {
 		nodeManifest := manifest.Nodes[name]
+		ind, ok := ifd.Instances[name]
+		if !ok {
+			return nil, fmt.Errorf("information for node '%s' missing from infrastucture data", name)
+		}
 		node := &Node{
 			Name:             name,
 			Testnet:          testnet,
 			PrivvalKey:       keyGen.Generate(manifest.KeyType),
 			NodeKey:          keyGen.Generate("ed25519"),
-			IP:               ipGen.Next(),
+			IP:               ind.IPAddress,
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
 			Database:         "goleveldb",
@@ -157,6 +149,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			FastSync:         nodeManifest.FastSync,
+			Mempool:          nodeManifest.Mempool,
 			StateSync:        nodeManifest.StateSync,
 			PersistInterval:  1,
 			SnapshotInterval: nodeManifest.SnapshotInterval,
@@ -309,6 +302,12 @@ func (n Node) Validate(testnet Testnet) error {
 	case "", "v0", "v1", "v2":
 	default:
 		return fmt.Errorf("invalid fast sync setting %q", n.FastSync)
+
+	}
+	switch n.Mempool {
+	case "", "v0", "v1":
+	default:
+		return fmt.Errorf("invalid mempool version %q", n.Mempool)
 	}
 	switch n.Database {
 	case "goleveldb", "cleveldb", "boltdb", "rocksdb", "badgerdb":
@@ -407,6 +406,7 @@ func (t Testnet) ArchiveNodes() []*Node {
 // RandomNode returns a random non-seed node.
 func (t Testnet) RandomNode() *Node {
 	for {
+		//nolint:gosec // G404: Use of weak random number generator (math/rand instead of crypto/rand)
 		node := t.Nodes[rand.Intn(len(t.Nodes))]
 		if node.Mode != ModeSeed {
 			return node
@@ -483,7 +483,7 @@ type keyGenerator struct {
 
 func newKeyGenerator(seed int64) *keyGenerator {
 	return &keyGenerator{
-		random: rand.New(rand.NewSource(seed)),
+		random: rand.New(rand.NewSource(seed)), //nolint:gosec
 	}
 }
 

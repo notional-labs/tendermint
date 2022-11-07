@@ -3,7 +3,7 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -12,7 +12,7 @@ import (
 )
 
 // DefaultDirPerm is the default permissions used when creating directories.
-const DefaultDirPerm = 0700
+const DefaultDirPerm = 0o700
 
 var configTemplate *template.Template
 
@@ -63,7 +63,7 @@ func WriteConfigFile(configFilePath string, config *Config) {
 		panic(err)
 	}
 
-	tmos.MustWriteFile(configFilePath, buffer.Bytes(), 0644)
+	tmos.MustWriteFile(configFilePath, buffer.Bytes(), 0o644)
 }
 
 // Note: any changes to the comments/variables/mapstructure
@@ -342,6 +342,11 @@ dial_timeout = "{{ .P2P.DialTimeout }}"
 #######################################################
 [mempool]
 
+# Mempool version to use:
+#   1) "v0" - (default) FIFO mempool.
+#   2) "v1" - prioritized mempool.
+version = "{{ .Mempool.Version }}"
+
 recheck = {{ .Mempool.Recheck }}
 broadcast = {{ .Mempool.Broadcast }}
 wal_dir = "{{ js .Mempool.WalPath }}"
@@ -370,6 +375,22 @@ max_tx_bytes = {{ .Mempool.MaxTxBytes }}
 # Including space needed by encoding (one varint per transaction).
 # XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 max_batch_bytes = {{ .Mempool.MaxBatchBytes }}
+
+# ttl-duration, if non-zero, defines the maximum amount of time a transaction
+# can exist for in the mempool.
+#
+# Note, if ttl-num-blocks is also defined, a transaction will be removed if it
+# has existed in the mempool at least ttl-num-blocks number of blocks or if it's
+# insertion time into the mempool is beyond ttl-duration.
+ttl-duration = "{{ .Mempool.TTLDuration }}"
+
+# ttl-num-blocks, if non-zero, defines the maximum number of blocks a transaction
+# can exist for in the mempool.
+#
+# Note, if ttl-duration is also defined, a transaction will be removed if it
+# has existed in the mempool at least ttl-num-blocks number of blocks or if
+# it's insertion time into the mempool is beyond ttl-duration.
+ttl-num-blocks = {{ .Mempool.TTLNumBlocks }}
 
 #######################################################
 ###         State Sync Configuration Options        ###
@@ -460,6 +481,17 @@ peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 
 #######################################################
+###         Storage Configuration Options           ###
+#######################################################
+[storage]
+
+# Set to true to discard ABCI responses from the state store, which can save a
+# considerable amount of disk space. Set to false to ensure ABCI responses are
+# persisted. ABCI responses are required for /block_results RPC queries, and to
+# reindex events in the command-line tool.
+discard_abci_responses = {{ .Storage.DiscardABCIResponses}}
+
+#######################################################
 ###   Transaction Indexer Configuration Options     ###
 #######################################################
 [tx_index]
@@ -473,7 +505,13 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 # 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
+#   3) "psql" - the indexer services backed by PostgreSQL.
+# When "kv" or "psql" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = "{{ .TxIndex.Indexer }}"
+
+# The PostgreSQL connection configuration, the connection format:
+#   postgresql://<user>:<password>@<host>:<port>/<db>?<opts>
+psql-conn = "{{ .TxIndex.PsqlConn }}"
 
 #######################################################
 ###       Instrumentation Configuration Options     ###
@@ -506,7 +544,7 @@ func ResetTestRoot(testName string) *Config {
 
 func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	// create a unique, concurrency-safe test directory under os.TempDir()
-	rootDir, err := ioutil.TempDir("", fmt.Sprintf("%s-%s_", chainID, testName))
+	rootDir, err := os.MkdirTemp("", fmt.Sprintf("%s-%s_", chainID, testName))
 	if err != nil {
 		panic(err)
 	}
@@ -533,11 +571,11 @@ func ResetTestRootWithChainID(testName string, chainID string) *Config {
 			chainID = "tendermint_test"
 		}
 		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
-		tmos.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
+		tmos.MustWriteFile(genesisFilePath, []byte(testGenesis), 0o644)
 	}
 	// we always overwrite the priv val
-	tmos.MustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
-	tmos.MustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
+	tmos.MustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0o644)
+	tmos.MustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0o644)
 
 	config := TestConfig().SetRoot(rootDir)
 	return config

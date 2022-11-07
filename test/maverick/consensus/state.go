@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"reflect"
 	"runtime/debug"
@@ -236,13 +236,15 @@ func (cs *State) handleMsg(mi msgInfo) {
 
 // Enter (CreateEmptyBlocks): from enterNewRound(height,round)
 // Enter (CreateEmptyBlocks, CreateEmptyBlocksInterval > 0 ):
-// 		after enterNewRound(height,round), after timeout of CreateEmptyBlocksInterval
+//
+//	after enterNewRound(height,round), after timeout of CreateEmptyBlocksInterval
+//
 // Enter (!CreateEmptyBlocks) : after enterNewRound(height,round), once txs are in the mempool
 func (cs *State) enterPropose(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPropose <= cs.Step) {
-		logger.Debug(fmt.Sprintf(
+		logger.Debug("enter propose", "msg", log.NewLazySprintf(
 			"enterPropose(%v/%v): Invalid args. Current step: %v/%v/%v",
 			height,
 			round,
@@ -251,7 +253,9 @@ func (cs *State) enterPropose(height int64, round int32) {
 			cs.Step))
 		return
 	}
-	logger.Info(fmt.Sprintf("enterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	logger.Info("enter propose",
+		"msg",
+		log.NewLazySprintf("enterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterPropose:
@@ -279,7 +283,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 // Otherwise vote nil.
 func (cs *State) enterPrevote(height int64, round int32) {
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevote <= cs.Step) {
-		cs.Logger.Debug(fmt.Sprintf(
+		cs.Logger.Debug("enter prevote", "msg", log.NewLazySprintf(
 			"enterPrevote(%v/%v): Invalid args. Current step: %v/%v/%v",
 			height,
 			round,
@@ -295,7 +299,9 @@ func (cs *State) enterPrevote(height int64, round int32) {
 		cs.newStep()
 	}()
 
-	cs.Logger.Debug(fmt.Sprintf("enterPrevote(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	cs.Logger.Debug("enter prevote",
+		"msg",
+		log.NewLazySprintf("enterPrevote(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Sign and broadcast vote as necessary
 	if b, ok := cs.misbehaviors[cs.Height]; ok {
@@ -318,17 +324,20 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrecommit <= cs.Step) {
-		logger.Debug(fmt.Sprintf(
-			"enterPrecommit(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			round,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug("enter precommit",
+			"msg",
+			log.NewLazySprintf("enterPrecommit(%v/%v): Invalid args. Current step: %v/%v/%v",
+				height,
+				round,
+				cs.Height,
+				cs.Round,
+				cs.Step))
 		return
 	}
 
-	logger.Info(fmt.Sprintf("enterPrecommit(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	logger.Info("enter precommit",
+		"msg",
+		log.NewLazySprintf("enterPrecommit(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterPrecommit:
@@ -341,12 +350,12 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	} else {
 		defaultEnterPrecommit(cs, height, round)
 	}
-
 }
 
 func (cs *State) addVote(
 	vote *types.Vote,
-	peerID p2p.ID) (added bool, err error) {
+	peerID p2p.ID,
+) (added bool, err error) {
 	cs.Logger.Debug(
 		"addVote",
 		"voteHeight",
@@ -372,7 +381,9 @@ func (cs *State) addVote(
 			return
 		}
 
-		cs.Logger.Info(fmt.Sprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
+		cs.Logger.Info("add vote",
+			"msg",
+			log.NewLazySprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
 		_ = cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 		cs.evsw.FireEvent(types.EventVote, vote)
 
@@ -437,9 +448,7 @@ var (
 
 //-----------------------------------------------------------------------------
 
-var (
-	msgQueueSize = 1000
-)
+var msgQueueSize = 1000
 
 // msgs from the reactor which may update the state
 type msgInfo struct {
@@ -721,7 +730,6 @@ func (cs *State) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 
 // SetProposal inputs a proposal.
 func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.ID) error {
-
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&tmcon.ProposalMessage{Proposal: proposal}, ""}
 	} else {
@@ -734,7 +742,6 @@ func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.ID) error {
 
 // AddProposalBlockPart inputs a part of the proposal block.
 func (cs *State) AddProposalBlockPart(height int64, round int32, part *types.Part, peerID p2p.ID) error {
-
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&tmcon.BlockPartMessage{Height: height, Round: round, Part: part}, ""}
 	} else {
@@ -1062,7 +1069,6 @@ func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 	default:
 		panic(fmt.Sprintf("Invalid timeout step: %v", ti.Step))
 	}
-
 }
 
 func (cs *State) handleTxsAvailable() {
@@ -1094,7 +1100,9 @@ func (cs *State) handleTxsAvailable() {
 // Used internally by handleTimeout and handleMsg to make state transitions
 
 // Enter: `timeoutNewHeight` by startTime (commitTime+timeoutCommit),
-// 	or, if SkipTimeoutCommit==true, after receiving all precommits from (height,round-1)
+//
+//	or, if SkipTimeoutCommit==true, after receiving all precommits from (height,round-1)
+//
 // Enter: `timeoutPrecommits` after any +2/3 precommits from (height,round-1)
 // Enter: +2/3 precommits for nil at (height,round-1)
 // Enter: +2/3 prevotes any or +2/3 precommits for block or any from (height, round)
@@ -1103,7 +1111,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != cstypes.RoundStepNewHeight) {
-		logger.Debug(fmt.Sprintf(
+		logger.Debug("enter new round", "msg", log.NewLazySprintf(
 			"enterNewRound(%v/%v): Invalid args. Current step: %v/%v/%v",
 			height,
 			round,
@@ -1117,7 +1125,9 @@ func (cs *State) enterNewRound(height int64, round int32) {
 		logger.Debug("need to set a buffer and log message here for sanity", "startTime", cs.StartTime, "now", now)
 	}
 
-	logger.Info(fmt.Sprintf("enterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	logger.Info("enter new round",
+		"msg",
+		log.NewLazySprintf("enterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Increment validators if necessary
 	validators := cs.Validators
@@ -1217,7 +1227,9 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 			cs.sendInternalMessage(msgInfo{&tmcon.BlockPartMessage{Height: cs.Height, Round: cs.Round, Part: part}, ""})
 		}
 		cs.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
-		cs.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
+		cs.Logger.Debug("default decide proposal",
+			"msg",
+			log.NewLazySprintf("Signed proposal block: %v", block))
 	} else if !cs.replayMode {
 		cs.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 	}
@@ -1236,7 +1248,6 @@ func (cs *State) isProposalComplete() bool {
 	}
 	// if this is false the proposer is lying or we haven't received the POL yet
 	return cs.Votes.Prevotes(cs.Proposal.POLRound).HasTwoThirdsMajority()
-
 }
 
 // Create the next block to propose and return it. Returns nil block upon error.
@@ -1281,20 +1292,24 @@ func (cs *State) enterPrevoteWait(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevoteWait <= cs.Step) {
-		logger.Debug(fmt.Sprintf(
-			"enterPrevoteWait(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			round,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug("enter prevote wait",
+			"msg",
+			log.NewLazySprintf(
+				"enterPrevoteWait(%v/%v): Invalid args. Current step: %v/%v/%v",
+				height,
+				round,
+				cs.Height,
+				cs.Round,
+				cs.Step))
 		return
 	}
 	if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
 		panic(fmt.Sprintf("enterPrevoteWait(%v/%v), but Prevotes does not have any +2/3 votes", height, round))
 	}
 
-	logger.Debug(fmt.Sprintf("enterPrevoteWait(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	logger.Debug("enter prevote wait",
+		"msg",
+		log.NewLazySprintf("enterPrevoteWait(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterPrevoteWait:
@@ -1311,8 +1326,9 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.TriggeredTimeoutPrecommit) {
-		logger.Debug(
-			fmt.Sprintf(
+		logger.Debug("state enter precommit wait",
+			"msg",
+			log.NewLazySprintf(
 				"enterPrecommitWait(%v/%v): Invalid args. "+
 					"Current state is Height/Round: %v/%v/, TriggeredTimeoutPrecommit:%v",
 				height, round, cs.Height, cs.Round, cs.TriggeredTimeoutPrecommit))
@@ -1321,7 +1337,9 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 	if !cs.Votes.Precommits(round).HasTwoThirdsAny() {
 		panic(fmt.Sprintf("enterPrecommitWait(%v/%v), but Precommits does not have any +2/3 votes", height, round))
 	}
-	logger.Info(fmt.Sprintf("enterPrecommitWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	logger.Info("enter precommit wait",
+		"msg",
+		log.NewLazySprintf("enterPrecommitWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterPrecommitWait:
@@ -1338,16 +1356,19 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 	logger := cs.Logger.With("height", height, "commitRound", commitRound)
 
 	if cs.Height != height || cstypes.RoundStepCommit <= cs.Step {
-		logger.Debug(fmt.Sprintf(
-			"enterCommit(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			commitRound,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug("enter commit",
+			"msg",
+			log.NewLazySprintf("enterCommit(%v/%v): Invalid args. Current step: %v/%v/%v",
+				height,
+				commitRound,
+				cs.Height,
+				cs.Round,
+				cs.Step))
 		return
 	}
-	logger.Info(fmt.Sprintf("enterCommit(%v/%v). Current: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
+	logger.Info("enter commit",
+		"msg",
+		log.NewLazySprintf("enterCommit(%v/%v). Current: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
 		// Done enterCommit:
@@ -1380,7 +1401,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 		if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 			logger.Info(
 				"commit is for a block we do not know about; set ProposalBlock=nil",
-				"proposal", cs.ProposalBlock.Hash(),
+				"proposal", log.NewLazyBlockHash(cs.ProposalBlock),
 				"commit", blockID.Hash,
 			)
 
@@ -1417,7 +1438,7 @@ func (cs *State) tryFinalizeCommit(height int64) {
 		// TODO: ^^ wait, why does it matter that we're a validator?
 		logger.Debug(
 			"attempt to finalize failed; we do not have the commit block",
-			"proposal-block", cs.ProposalBlock.Hash(),
+			"proposal-block", log.NewLazyBlockHash(cs.ProposalBlock),
 			"commit-block", blockID.Hash,
 		)
 		return
@@ -1430,12 +1451,13 @@ func (cs *State) tryFinalizeCommit(height int64) {
 // Increment height and goto cstypes.RoundStepNewHeight
 func (cs *State) finalizeCommit(height int64) {
 	if cs.Height != height || cs.Step != cstypes.RoundStepCommit {
-		cs.Logger.Debug(fmt.Sprintf(
-			"finalizeCommit(%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		cs.Logger.Debug("finalize commit",
+			"msg",
+			log.NewLazySprintf("finalizeCommit(%v): Invalid args. Current step: %v/%v/%v",
+				height,
+				cs.Height,
+				cs.Round,
+				cs.Step))
 		return
 	}
 
@@ -1461,7 +1483,7 @@ func (cs *State) finalizeCommit(height int64) {
 		"root", block.AppHash,
 		"N", len(block.Txs),
 	)
-	cs.Logger.Debug(fmt.Sprintf("%v", block))
+	cs.Logger.Debug("finalize commit", "msg", log.NewLazySprintf("%v", block))
 
 	fail.Fail() // XXX
 
@@ -1688,12 +1710,12 @@ func (cs *State) addProposalBlockPart(msg *tmcon.BlockPartMessage, peerID p2p.ID
 		)
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
-		bz, err := ioutil.ReadAll(cs.ProposalBlockParts.GetReader())
+		bz, err := io.ReadAll(cs.ProposalBlockParts.GetReader())
 		if err != nil {
 			return added, err
 		}
 
-		var pbb = new(tmproto.Block)
+		pbb := new(tmproto.Block)
 		err = proto.Unmarshal(bz, pbb)
 		if err != nil {
 			return added, err
@@ -1751,7 +1773,7 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 		// If the vote height is off, we'll just ignore it,
 		// But if it's a conflicting sig, add it to the cs.evpool.
 		// If it's otherwise invalid, punish peer.
-		// nolint: gocritic
+		//nolint: gocritic
 		if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
 			if cs.privValidatorPubKey == nil {
 				return false, errPubKeyIsNotSet
@@ -1825,10 +1847,11 @@ func (cs *State) voteTime() time.Time {
 	now := tmtime.Now()
 	minVoteTime := now
 	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
-	// even if cs.LockedBlock != nil. See https://docs.tendermint.com/master/spec/.
+	// even if cs.LockedBlock != nil. See https://github.com/tendermint/tendermint/tree/v0.34.x/spec/.
 	timeIota := time.Duration(cs.state.ConsensusParams.Block.TimeIotaMs) * time.Millisecond
 	if cs.LockedBlock != nil {
-		// See the BFT time spec https://docs.tendermint.com/master/spec/consensus/bft-time.html
+		// See the BFT time spec
+		// https://github.com/tendermint/tendermint/blob/v0.34.x/spec/consensus/bft-time.md
 		minVoteTime = cs.LockedBlock.Time.Add(timeIota)
 	} else if cs.ProposalBlock != nil {
 		minVoteTime = cs.ProposalBlock.Time.Add(timeIota)
