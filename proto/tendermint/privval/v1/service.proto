@@ -1,8 +1,8 @@
 syntax = "proto3";
-package tendermint.privval;
+package tendermint.privval.v1;
 option  go_package = "github.com/tendermint/tendermint/proto/tendermint/privval";
 
-import "tendermint/privval/types.proto";
+import "tendermint/privval/v1/types.proto";
 
 //----------------------------------------
 // Service Definition

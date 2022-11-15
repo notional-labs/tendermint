@@ -1,8 +1,8 @@
 syntax = "proto3";
-package tendermint.privval;
+package tendermint.privval.v1;
 
-import "tendermint/crypto/keys.proto";
-import "tendermint/types/types.proto";
+import "tendermint/crypto/v1/keys.proto";
+import "tendermint/types/v1/types.proto";
 import "gogoproto/gogo.proto";
 
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/privval";
@@ -28,32 +28,32 @@ message PubKeyRequest {
 
 // PubKeyResponse is a response message containing the public key.
 message PubKeyResponse {
-  tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
-  RemoteSignerError           error   = 2;
+  tendermint.crypto.v1.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  RemoteSignerError              error   = 2;
 }
 
 // SignVoteRequest is a request to sign a vote
 message SignVoteRequest {
-  tendermint.types.Vote vote     = 1;
-  string                chain_id = 2;
+  tendermint.types.v1.Vote vote     = 1;
+  string                   chain_id = 2;
 }
 
 // SignedVoteResponse is a response containing a signed vote or an error
 message SignedVoteResponse {
-  tendermint.types.Vote vote  = 1 [(gogoproto.nullable) = false];
-  RemoteSignerError     error = 2;
+  tendermint.types.v1.Vote vote  = 1 [(gogoproto.nullable) = false];
+  RemoteSignerError        error = 2;
 }
 
 // SignProposalRequest is a request to sign a proposal
 message SignProposalRequest {
-  tendermint.types.Proposal proposal = 1;
-  string                    chain_id = 2;
+  tendermint.types.v1.Proposal proposal = 1;
+  string                       chain_id = 2;
 }
 
 // SignedProposalResponse is response containing a signed proposal or an error
 message SignedProposalResponse {
-  tendermint.types.Proposal proposal = 1 [(gogoproto.nullable) = false];
-  RemoteSignerError         error    = 2;
+  tendermint.types.v1.Proposal proposal = 1 [(gogoproto.nullable) = false];
+  RemoteSignerError            error    = 2;
 }
 
 // PingRequest is a request to confirm that the connection is alive.
@@ -79,6 +79,6 @@ message Message {
 // It is used for the SecretConnection until we migrate privval to gRPC.
 // https://github.com/tendermint/tendermint/issues/4698
 message AuthSigMessage {
-  tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
-  bytes                       sig     = 2;
+  tendermint.crypto.v1.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  bytes                          sig     = 2;
 }

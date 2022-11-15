@@ -1,11 +1,11 @@
 syntax = "proto3";
-package tendermint.abci;
+package tendermint.abci.v1beta1;
 
 option go_package = "github.com/tendermint/tendermint/abci/types";
 
-import "tendermint/crypto/proof.proto";
-import "tendermint/crypto/keys.proto";
-import "tendermint/types/params.proto";
+import "tendermint/crypto/v1/proof.proto";
+import "tendermint/crypto/v1/keys.proto";
+import "tendermint/types/v1/params.proto";
 import "google/protobuf/timestamp.proto";
 import "gogoproto/gogo.proto";
 
@@ -35,7 +35,7 @@ message Request {
     RequestVerifyVoteExtension verify_vote_extension = 18;
     RequestFinalizeBlock       finalize_block        = 19;
   }
-  reserved 6, 8, 9; // RequestBeginBlock, RequestDeliverTx, RequestEndBlock
+  reserved 6, 8, 9;  // RequestBeginBlock, RequestDeliverTx, RequestEndBlock
 }
 
 message RequestEcho {
@@ -52,12 +52,12 @@ message RequestInfo {
 }
 
 message RequestInitChain {
-  google.protobuf.Timestamp        time             = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  string                           chain_id         = 2;
-  tendermint.types.ConsensusParams consensus_params = 3;
-  repeated ValidatorUpdate         validators       = 4 [(gogoproto.nullable) = false];
-  bytes                            app_state_bytes  = 5;
-  int64                            initial_height   = 6;
+  google.protobuf.Timestamp           time             = 1 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  string                              chain_id         = 2;
+  tendermint.types.v1.ConsensusParams consensus_params = 3;
+  repeated ValidatorUpdate            validators       = 4 [(gogoproto.nullable) = false];
+  bytes                               app_state_bytes  = 5;
+  int64                               initial_height   = 6;
 }
 
 message RequestQuery {
@@ -145,9 +145,9 @@ message RequestVerifyVoteExtension {
 }
 
 message RequestFinalizeBlock {
-  repeated bytes       txs                  = 1;
-  CommitInfo           decided_last_commit  = 2 [(gogoproto.nullable) = false];
-  repeated Misbehavior misbehavior          = 3 [(gogoproto.nullable) = false];
+  repeated bytes       txs                 = 1;
+  CommitInfo           decided_last_commit = 2 [(gogoproto.nullable) = false];
+  repeated Misbehavior misbehavior         = 3 [(gogoproto.nullable) = false];
   // hash is the merkle root hash of the fields of the decided block.
   bytes                     hash                 = 4;
   int64                     height               = 5;
@@ -180,7 +180,7 @@ message Response {
     ResponseVerifyVoteExtension verify_vote_extension = 19;
     ResponseFinalizeBlock       finalize_block        = 20;
   }
-  reserved 7, 9, 10; // ResponseBeginBlock, ResponseDeliverTx, ResponseEndBlock
+  reserved 7, 9, 10;  // ResponseBeginBlock, ResponseDeliverTx, ResponseEndBlock
 }
 
 // nondeterministic
@@ -206,33 +206,33 @@ message ResponseInfo {
 }
 
 message ResponseInitChain {
-  tendermint.types.ConsensusParams consensus_params = 1;
-  repeated ValidatorUpdate         validators       = 2 [(gogoproto.nullable) = false];
-  bytes                            app_hash         = 3;
+  tendermint.types.v1.ConsensusParams consensus_params = 1;
+  repeated ValidatorUpdate            validators       = 2 [(gogoproto.nullable) = false];
+  bytes                               app_hash         = 3;
 }
 
 message ResponseQuery {
   uint32 code = 1;
   // bytes data = 2; // use "value" instead.
-  string                     log       = 3;  // nondeterministic
-  string                     info      = 4;  // nondeterministic
-  int64                      index     = 5;
-  bytes                      key       = 6;
-  bytes                      value     = 7;
-  tendermint.crypto.ProofOps proof_ops = 8;
-  int64                      height    = 9;
-  string                     codespace = 10;
+  string                        log       = 3;  // nondeterministic
+  string                        info      = 4;  // nondeterministic
+  int64                         index     = 5;
+  bytes                         key       = 6;
+  bytes                         value     = 7;
+  tendermint.crypto.v1.ProofOps proof_ops = 8;
+  int64                         height    = 9;
+  string                        codespace = 10;
 }
 
 message ResponseCheckTx {
-  uint32         code       = 1;
-  bytes          data       = 2;
-  int64          gas_wanted = 5;
-  string         codespace  = 8;
-  string         sender     = 9;
-  int64          priority   = 10;
+  uint32 code       = 1;
+  bytes  data       = 2;
+  int64  gas_wanted = 5;
+  string codespace  = 8;
+  string sender     = 9;
+  int64  priority   = 10;
 
-  reserved 3, 4, 6, 7, 11; // see https://github.com/tendermint/tendermint/issues/8543
+  reserved 3, 4, 6, 7, 11;  // see https://github.com/tendermint/tendermint/issues/8543
 }
 
 message ResponseDeliverTx {
@@ -289,19 +289,19 @@ message ResponseApplySnapshotChunk {
 }
 
 message ResponsePrepareProposal {
-  repeated TxRecord                tx_records              = 1;
-  bytes                            app_hash                = 2;
-  repeated ExecTxResult            tx_results              = 3;
-  repeated ValidatorUpdate         validator_updates       = 4;
-  tendermint.types.ConsensusParams consensus_param_updates = 5;
+  repeated TxRecord                   tx_records              = 1;
+  bytes                               app_hash                = 2;
+  repeated ExecTxResult               tx_results              = 3;
+  repeated ValidatorUpdate            validator_updates       = 4;
+  tendermint.types.v1.ConsensusParams consensus_param_updates = 5;
 }
 
 message ResponseProcessProposal {
-  ProposalStatus                   status                  = 1;
-  bytes                            app_hash                = 2;
-  repeated ExecTxResult            tx_results              = 3;
-  repeated ValidatorUpdate         validator_updates       = 4;
-  tendermint.types.ConsensusParams consensus_param_updates = 5;
+  ProposalStatus                      status                  = 1;
+  bytes                               app_hash                = 2;
+  repeated ExecTxResult               tx_results              = 3;
+  repeated ValidatorUpdate            validator_updates       = 4;
+  tendermint.types.v1.ConsensusParams consensus_param_updates = 5;
 
   enum ProposalStatus {
     UNKNOWN = 0;
@@ -327,10 +327,10 @@ message ResponseVerifyVoteExtension {
 message ResponseFinalizeBlock {
   repeated Event events = 1
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-  repeated ExecTxResult            tx_results              = 2;
-  repeated ValidatorUpdate         validator_updates       = 3 [(gogoproto.nullable) = false];
-  tendermint.types.ConsensusParams consensus_param_updates = 4;
-  bytes                            app_hash                = 5;
+  repeated ExecTxResult               tx_results              = 2;
+  repeated ValidatorUpdate            validator_updates       = 3 [(gogoproto.nullable) = false];
+  tendermint.types.v1.ConsensusParams consensus_param_updates = 4;
+  bytes                               app_hash                = 5;
 }
 
 //----------------------------------------
@@ -417,8 +417,8 @@ message Validator {
 
 // ValidatorUpdate
 message ValidatorUpdate {
-  tendermint.crypto.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
-  int64                       power   = 2;
+  tendermint.crypto.v1.PublicKey pub_key = 1 [(gogoproto.nullable) = false];
+  int64                          power   = 2;
 }
 
 // VoteInfo

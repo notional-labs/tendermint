@@ -1,10 +1,10 @@
 syntax = "proto3";
-package tendermint.blocksync;
+package tendermint.blocksync.v1;
 
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/blocksync";
 
-import "tendermint/types/block.proto";
-import "tendermint/types/types.proto";
+import "tendermint/types/v1/block.proto";
+import "tendermint/types/v1/types.proto";
 
 // BlockRequest requests a block for a specific height
 message BlockRequest {
@@ -19,8 +19,8 @@ message NoBlockResponse {
 
 // BlockResponse returns block to the requested
 message BlockResponse {
-  tendermint.types.Block          block      = 1;
-  tendermint.types.ExtendedCommit ext_commit = 2;
+  tendermint.types.v1.Block          block      = 1;
+  tendermint.types.v1.ExtendedCommit ext_commit = 2;
 }
 
 // StatusRequest requests the status of a peer.
