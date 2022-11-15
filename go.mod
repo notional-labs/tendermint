@@ -23,7 +23,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/gtank/merlin v0.1.1
 	github.com/lib/pq v1.2.0
-	github.com/libp2p/go-buffer-pool v0.0.2
+	github.com/libp2p/go-buffer-pool v0.1.0
 	github.com/minio/highwayhash v1.0.1
 	github.com/opencontainers/runc v1.0.2 // indirect
 	github.com/ory/dockertest v3.3.5+incompatible
