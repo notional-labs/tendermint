@@ -82,6 +82,7 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS
 
+- [crypto] \#unk Use updated btcd elliptic curves
 - [internal/protoio] \#7325 Optimized `MarshalDelimited` by inlining the common case and using a `sync.Pool` in the worst case. (@odeke-em)
 - [consensus] \#6969 remove logic to 'unlock' a locked block.
 - [evidence] \#7700 Evidence messages contain single Evidence instead of EvidenceList (@jmalicevic)
