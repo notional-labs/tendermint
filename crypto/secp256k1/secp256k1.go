@@ -208,7 +208,7 @@ func (pubKey PubKey) VerifySignature(msg []byte, sigStr []byte) bool {
 		return false
 	}
 
-	pub, err := secp256k1.ParsePubKey(pubKey, secp256k1.S256())
+	pub, err := secp256k1.ParsePubKey(pubKey.Bytes())
 	if err != nil {
 		return false
 	}
