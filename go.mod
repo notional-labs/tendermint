@@ -11,7 +11,7 @@ require (
 	github.com/adlio/schema v1.1.13
 	github.com/btcsuite/btcd v0.21.0-beta
 	github.com/btcsuite/btcutil v1.0.2
-	github.com/confio/ics23/go v0.6.3
+	github.com/confio/ics23/go v0.9.0
 	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/cosmos/iavl v0.15.3
 	github.com/fortytw2/leaktest v1.3.0
@@ -37,8 +37,7 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tendermint/tm-db v0.6.4
-	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
-	golang.org/x/net v0.0.0-20210903162142-ad29c8ab022f
-	golang.org/x/sys v0.0.0-20210903071746-97244b99971b // indirect
+	golang.org/x/crypto v0.2.0
+	golang.org/x/net v0.2.0
 	google.golang.org/grpc v1.37.0
 )
