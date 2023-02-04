@@ -557,7 +557,7 @@ func (conR *Reactor) getRoundState() *cstypes.RoundState {
 }
 
 func (conR *Reactor) gossipDataRoutine(peer p2p.Peer, ps *PeerState) {
-	logger := conR.Logger.With("peer", peer)
+	logger := conR.Logger.With("peer", peer.ID())
 
 OUTER_LOOP:
 	for {
@@ -705,7 +705,7 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 		}, logger) {
 			ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 		} else {
-			logger.Debug("Sending block part for catchup failed")
+			logger.Error("Sending block part for catchup failed")
 			// sleep to avoid retrying too fast
 			time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 		}
