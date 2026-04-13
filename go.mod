@@ -36,9 +36,9 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
-	github.com/tendermint/tm-db v0.6.4
+	github.com/tendermint/tm-db v0.6.7
 	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9
 	golang.org/x/net v0.0.0-20210903162142-ad29c8ab022f
 	golang.org/x/sys v0.0.0-20210903071746-97244b99971b // indirect
-	google.golang.org/grpc v1.37.0
+	google.golang.org/grpc v1.44.0
 )
